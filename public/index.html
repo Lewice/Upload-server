@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>File Upload Server</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background: #f8f9fa; padding: 1.5rem; font-family: system-ui, sans-serif; transition: background-color 0.3s, color 0.3s; }
+    .auth-container, .dashboard-container { max-width: 1400px; margin: auto; }
+    .drop-zone {
+      border: 3px dashed #9ca3af;
+      border-radius: 1rem;
+      padding: 5rem 1rem;
+      text-align: center;
+      background: white;
+      transition: all 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .list-group-item:hover { background: #f1f5f9; }
+    .stats-box, .profile-box {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .accordion-button { font-weight: bold; }
+    body.dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    body.dark-mode .card,
+    body.dark-mode .list-group-item,
+    body.dark-mode .drop-zone,
+    body.dark-mode .stats-box,
+    body.dark-mode .profile-box,
+    body.dark-mode .accordion-button {
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      border-color: #333;
+    }
+    body.dark-mode .alert-success { background-color: #2e7d32; color: white; }
+    body.dark-mode .alert-danger { background-color: #c62828; color: white; }
+    body.dark-mode .btn-outline-primary { color: #bb86fc; border-color: #bb86fc; }
+    body.dark-mode .btn-outline-info { color: #03dac6; border-color: #03dac6; }
+    body.dark-mode .btn-outline-danger { color: #ff5252; border-color: #ff5252; }
+    body.dark-mode .btn-outline-secondary { color: #e0e0e0; border-color: #444; }
+    body.dark-mode .btn-outline-warning { color: #ffc107; border-color: #ffc107; }
+    body.dark-mode .text-muted { color: #aaaaaa !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Auth -->
+  <div id="authSection" class="auth-container">
+    <h2 class="text-center mb-5">Your File Upload Server</h2>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-body">
+            <h5 class="card-title">Login</h5>
+            <form id="loginForm">
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" id="loginUsername" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="loginPassword" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Sign In</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-body">
+            <h5 class="card-title">Register</h5>
+            <form id="registerForm">
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" id="regUsername" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="regPassword" required>
+              </div>
+              <button type="submit" class="btn btn-success w-100">Create Account</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p id="authMessage" class="text-center mt-4 text-danger fw-bold"></p>
+  </div>
+
+  <!-- Main Content -->
+  <div id="dashboardSection" class="dashboard-container d-none">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 id="pageTitle">Welcome, <span id="usernameDisplay"></span></h2>
+      <div>
+        <button id="darkModeToggle" class="btn btn-outline-secondary me-2" title="Toggle Dark Mode">
+          <i class="bi bi-moon-stars-fill"></i>
+        </button>
+        <button id="dashboardTab" class="btn btn-outline-primary me-2 active">Dashboard</button>
+        <button id="profileTab" class="btn btn-outline-primary me-2">Profile</button>
+        <button id="adminTab" class="btn btn-outline-primary me-2" style="display: none;">Admin</button>
+        <button id="logoutBtn" class="btn btn-outline-danger">Logout</button>
+      </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboardContent">
+      <div class="mb-3">
+        <button id="createFolderBtn" class="btn btn-sm btn-success mb-2">+ New Folder</button>
+        <div id="folderCreateForm" class="input-group mb-3" style="display:none; max-width: 400px;">
+          <input type="text" id="newFolderName" class="form-control" placeholder="Folder name">
+          <button id="saveFolderBtn" class="btn btn-primary">Create</button>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Upload to Folder (optional)</label>
+        <select id="folderSelect" class="form-select">
+          <option value="">Root (no folder)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-8">
+          <div id="dropZone" class="drop-zone mb-4">
+            <h4>Drag & Drop Files Here</h4>
+            <p class="text-muted">or click to select files</p>
+            <input type="file" id="fileInput" multiple hidden>
+          </div>
+
+          <div id="uploadProgress" class="progress mb-4 d-none" style="height: 12px;">
+            <div id="progressBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+          </div>
+
+          <div id="uploadStatus" class="alert d-none"></div>
+
+          <h4 class="mt-4 mb-3">Your Files</h4>
+          <div id="fileSections" class="accordion"></div>
+
+          <h4 class="mt-5 mb-3">Shared with Me</h4>
+          <div id="sharedWithMe" class="accordion"></div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="stats-box">
+            <h4 class="mb-3">Storage Usage</h4>
+            <div id="storageBar" class="progress mb-4" style="height: 25px;">
+              <div id="storageProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%">Loading...</div>
+            </div>
+
+            <h4 class="mt-4 mb-3">Recent Activity (last 5)</h4>
+            <ul id="activityList" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div id="profileContent" style="display: none;">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="stats-box profile-box">
+            <h4 class="mb-3">Profile Picture</h4>
+            <div class="text-center mb-4">
+              <img id="profileImage" src="/uploads/default-profile.jpg" alt="Profile" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #ddd;">
+            </div>
+            <form id="profileImageForm" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label class="form-label">Upload New Picture (JPG, max 5MB)</label>
+                <input type="file" class="form-control" id="profileImageInput" accept="image/jpeg" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Upload Picture</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="stats-box profile-box">
+            <h4 class="mb-3">Account Stats</h4>
+            <p>Total uploaded: <strong id="profileUsedMB">Loading...</strong></p>
+
+            <h4 class="mt-4 mb-3">Change Password</h4>
+            <form id="changePasswordForm">
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="oldPassword" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="newPassword" required>
+              </div>
+              <button type="submit" class="btn btn-success w-100">Update Password</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="stats-box">
+            <h4 class="mb-3">Recent Logins (last 5)</h4>
+            <ul id="loginHistoryList" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Content -->
+    <div id="adminContent" style="display: none;">
+      <h4 class="mb-3">Admin Panel</h4>
+
+      <!-- Global Storage Stats -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Global Storage Stats</h5>
+          <div class="row text-center">
+            <div class="col-md-3">
+              <h6>Total Users</h6>
+              <p class="fs-4 fw-bold" id="totalUsers">—</p>
+            </div>
+            <div class="col-md-3">
+              <h6>Admins</h6>
+              <p class="fs-4 fw-bold" id="totalAdmins">—</p>
+            </div>
+            <div class="col-md-3">
+              <h6>Total Files</h6>
+              <p class="fs-4 fw-bold" id="totalFiles">—</p>
+            </div>
+            <div class="col-md-3">
+              <h6>Used Space</h6>
+              <p class="fs-4 fw-bold" id="totalUsedSpace">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="mb-3">User Management</h4>
+      <ul id="userList" class="list-group mb-4"></ul>
+
+      <h4 class="mb-3">Create New User</h4>
+      <form id="createUserForm">
+        <div class="mb-3">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" id="newUserUsername" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="newUserPassword" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Role</label>
+          <select class="form-select" id="newUserRole">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-success w-100">Create User</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
